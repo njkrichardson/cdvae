@@ -1,162 +1,43 @@
-# Crystal Diffusion Variational AutoEncoder
+# Crystal Diffusion Variational AutoEncoder (CDVAE) 
 
-This software implementes Crystal Diffusion Variational AutoEncoder (CDVAE), which generates the periodic structure of materials.
+This is a fork of [Crystal Diffusion Variational AutoEncoder (CDVAE)](https://github.com/txie-93/cdvae), which is a research package for generative modeling of (crystalline) materials. Please see their README for additional information on the package functionality and origin. 
 
-It has several main functionalities:
+This repository came about in an attempt to reproduce the work of Xie et al. using their source code (linked above). The provided miniconda configuration proved broken, and some updates were required to render the code usable with newer versions of PyTorch. This repository contains resources to run the CDVAE code in a repeatable manner on most modern setups (e.g., CUDA major versions 10, 11, and 12) within a container environment. 
 
-- Generate novel, stable materials by learning from a dataset containing existing material structures.
-- Generate materials by optimizing a specific property in the latent space, i.e. inverse design.
+## Installation 
 
-[[Paper]](https://arxiv.org/abs/2110.06197) [[Datasets]](data/)
+First clone the repository and change directory into the project-level directory for the following instructions. 
 
-<p align="center">
-  <img src="assets/illustrative.png" /> 
-</p>
+**Note**: CDVAE expects the data to reside in the `data/` directory directly under the project-level directory. You may collect the data yourself or run `make download` to pull the data down from the original repository. 
 
-<p align="center">
-  <img src="assets/Tm4Ni4As4.gif" width="200">
-</p>
+### Docker (Recommended) 
 
+The provided Dockerfile utilizes an Nvidia-provided container base image with support for CUDA 11.6. If you'd like to use a different CUDA major/minor version, update the [base image identifier](https://github.com/njkrichardson/cdvae/blob/e34cfb4540c514148ef55083c558d111adedd345/Dockerfile#L3). Since many users coming with a material-science background are not familiar with Docker, we've provided 
+a Makefile with reasonable default functions for building/running the image. 
 
-## Table of Contents
-
-- [Installation](#installation)
-- [Datasets](#datasets)
-- [Training CDVAE](#training-cdvae)
-- [Generating materials](#generating-materials)
-- [Evaluating model](#evaluating-model)
-- [Authors and acknowledgements](#authors-and-acknowledgements)
-- [Citation](#citation)
-- [Contact](#contact)
-
-## Installation
-
-The easiest way to install prerequisites is via [conda](https://conda.io/docs/index.html).
-
-### GPU machines
-
-Run the following command to install the environment:
-```bash
-conda env create -f env.yml
-```
-Activate the conda environment with `conda activate cdvae`.
-
-Install this package with `pip install -e .`.
-
-### Faster conda installation
-
-We've noticed that the above command to install the dependencies from `env.yml` can take very long. A faster way to install the required packages is:
-```bash
-conda env create -f env_sub.yml
-conda activate cdvae
-conda install ipywidgets jupyterlab matplotlib pylint
-conda install -c conda-forge matminer=0.7.3 nglview pymatgen=2020.12.31
-# Downgrade to fix a known issue with pytorch
-python3 -m pip install setuptools==59.5.0
-pip install -e .
-```
-
-### CPU-only machines
+The Docker [documentation](https://docs.docker.com/reference/) is excellent, and can also be consulted for troubleshooting. 
 
 ```bash
-conda env create -f env.cpu.yml
-conda activate cdvae
-pip install -e .
+$ make
+...
+$ make run
+...
+$ docker exec -it cdvae /bin/zsh
+(container) $ cd /cdvae
+(container) $ direnv allow
+(container) $ python3 cdvae/run.py data=perov expname=perov
 ```
 
-### Setting up environment variables
+### Miniconda3
 
-Make a copy of the `.env.template` file and rename it to `.env`. Modify the following environment variables in `.env`.
-
-- `PROJECT_ROOT`: path to the folder that contains this repo
-- `HYDRA_JOBS`: path to a folder to store hydra outputs
-- `WABDB`: path to a folder to store wabdb outputs
-
-## Datasets
-
-All datasets are directly available on `data/` with train/valication/test splits. You don't need to download them again. If you use these datasets, please consider to cite the original papers from which we curate these datasets.
-
-Find more about these datasets by going to our [Datasets](data/) page.
-
-## Training CDVAE
-
-### Training without a property predictor
-
-To train a CDVAE, run the following command:
-
+```bash
+$ conda create --name cdvae python=3.9 \
+    && conda activate cdvae \
+    && conda install -y pytorch==1.13.0 torchvision==0.14.0 torchaudio==0.13.0 pytorch-cuda=11.6 -c pytorch -c nvidia \
+    && conda install -c conda-forge pytorch-lightning \
+    && conda install -c conda-forge ase autopep8 seaborn tqdm nglview \
+    && pip install torch_geometric pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-1.13.0+cu116.html \
+    && pip install higher hydra-core==1.1.0 hydra-joblib-launcher==1.1.5 p-tqdm==1.3.3 pytest python-dotenv smact==2.2.1 streamlit==0.79.0 torchdiffeq wandb \
+    && pip install matminer==0.7.3 \
+    && pip install "protobuf==3.20.*"
 ```
-python cdvae/run.py data=perov expname=perov
-```
-
-To use other datasets, use `data=carbon` and `data=mp_20` instead. CDVAE uses [hydra](https://hydra.cc) to configure hyperparameters, and users can modify them with the command line or configure files in `conf/` folder.
-
-After training, model checkpoints can be found in `$HYDRA_JOBS/singlerun/YYYY-MM-DD/expname`.
-
-### Training with a property predictor
-
-Users can also additionally train an MLP property predictor on the latent space, which is needed for the property optimization task:
-
-```
-python cdvae/run.py data=perov expname=perov model.predict_property=True
-```
-
-The name of the predicted propery is defined in `data.prop`, as in `conf/data/perov.yaml` for Perov-5.
-
-## Generating materials
-
-To generate materials, run the following command:
-
-```
-python scripts/evaluate.py --model_path MODEL_PATH --tasks recon gen opt
-```
-
-`MODEL_PATH` will be the path to the trained model. Users can choose one or several of the 3 tasks:
-
-- `recon`: reconstruction, reconstructs all materials in the test data. Outputs can be found in `eval_recon.pt`l
-- `gen`: generate new material structures by sampling from the latent space. Outputs can be found in `eval_gen.pt`.
-- `opt`: generate new material strucutre by minimizing the trained property in the latent space (requires `model.predict_property=True`). Outputs can be found in `eval_opt.pt`.
-
-`eval_recon.pt`, `eval_gen.pt`, `eval_opt.pt` are pytorch pickles files containing multiple tensors that describes the structures of `M` materials batched together. Each material can have different number of atoms, and we assume there are in total `N` atoms. `num_evals` denote the number of Langevin dynamics we perform for each material.
-
-- `frac_coords`: fractional coordinates of each atom, shape `(num_evals, N, 3)`
-- `atom_types`: atomic number of each atom, shape `(num_evals, N)`
-- `lengths`: the lengths of the lattice, shape `(num_evals, M, 3)`
-- `angles`: the angles of the lattice, shape `(num_evals, M, 3)`
-- `num_atoms`: the number of atoms in each material, shape `(num_evals, M)`
-
-## Evaluating model
-
-To compute evaluation metrics, run the following command:
-
-```
-python scripts/compute_metrics.py --root_path MODEL_PATH --tasks recon gen opt
-```
-
-`MODEL_PATH` will be the path to the trained model. All evaluation metrics will be saved in `eval_metrics.json`.
-
-## Authors and acknowledgements
-
-The software is primary written by [Tian Xie](www.txie.me), with signficant contributions from [Xiang Fu](https://xiangfu.co/).
-
-The GNN codebase and many utility functions are adapted from the [ocp-models](https://github.com/Open-Catalyst-Project/ocp) by the [Open Catalyst Project](https://opencatalystproject.org/). Especially, the GNN implementations of [DimeNet++](https://arxiv.org/abs/2011.14115) and [GemNet](https://arxiv.org/abs/2106.08903) are used.
-
-The main structure of the codebase is built from [NN Template](https://github.com/lucmos/nn-template).
-
-For the datasets, [Perov-5](data/perov_5) is curated from [Perovksite water-splitting](https://cmr.fysik.dtu.dk/cubic_perovskites/cubic_perovskites.html), [Carbon-24](data/carbon_24) is curated from [AIRSS data for carbon at 10GPa](https://archive.materialscloud.org/record/2020.0026/v1), [MP-20](data/mp_20) is curated from [Materials Project](https://materialsproject.org).
-
-## Citation
-
-Please consider citing the following paper if you find our code & data useful.
-
-```
-@article{xie2021crystal,
-  title={Crystal Diffusion Variational Autoencoder for Periodic Material Generation},
-  author={Xie, Tian and Fu, Xiang and Ganea, Octavian-Eugen and Barzilay, Regina and Jaakkola, Tommi},
-  journal={arXiv preprint arXiv:2110.06197},
-  year={2021}
-}
-```
-
-## Contact
-
-Please leave an issue or reach out to Tian Xie (txie AT csail DOT mit DOT edu) if you have any questions.
