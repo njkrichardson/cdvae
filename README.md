@@ -26,14 +26,15 @@ $ docker exec -it cdvae /bin/zsh
 ```
 
 We use miniconda within the container environment (we realize this is insane, but we have not found another way to instantiate a workable dependency collection otherwise). The first time using the container, you'll 
-need to run the following: 
+need to configure conda and enable direnv for configuring your environment from the provided `.envrc`. 
 
 ```bash 
 (container) $ conda init zsh
 ...
 (container) $ zsh
 ...
-(container) (base) $ 
+(container) (base) $ cd /cdvae
+(container) (base) $ direnv allow 
 ```
 
 Now simply activate the (intra-container) miniconda environment. 
