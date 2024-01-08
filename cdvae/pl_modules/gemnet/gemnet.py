@@ -14,7 +14,10 @@ from torch_scatter import scatter
 from torch_sparse import SparseTensor
 
 from cdvae.common.data_utils import (
-    get_pbc_distances, radius_graph_pbc, frac_to_cart_coords)
+    get_pbc_distances,
+    radius_graph_pbc,
+    frac_to_cart_coords,
+)
 
 from .layers.atom_update_block import OutputBlock
 from .layers.base_layers import Dense
@@ -262,9 +265,7 @@ class GemNetT(torch.nn.Module):
         """
         idx_s, idx_t = edge_index  # c->a (source=c, target=a)
 
-        value = torch.arange(
-            idx_s.size(0), device=idx_s.device, dtype=idx_s.dtype
-        )
+        value = torch.arange(idx_s.size(0), device=idx_s.device, dtype=idx_s.dtype)
         # Possibly contains multiple copies of the same edge (for periodic interactions)
         adj = SparseTensor(
             row=idx_t,
@@ -350,9 +351,7 @@ class GemNetT(torch.nn.Module):
             neighbors,
         )
         batch_edge = batch_edge[mask]
-        neighbors_new = 2 * torch.bincount(
-            batch_edge, minlength=neighbors.size(0)
-        )
+        neighbors_new = 2 * torch.bincount(batch_edge, minlength=neighbors.size(0))
 
         # Create indexing array
         edge_reorder_idx = repeat_blocks(
@@ -403,6 +402,7 @@ class GemNetT(torch.nn.Module):
         empty_image = neighbors == 0
         if torch.any(empty_image):
             import pdb
+
             pdb.set_trace()
             # raise ValueError(
             #     f"An image has no neighbors: id={data.id[empty_image]}, "
@@ -410,14 +410,19 @@ class GemNetT(torch.nn.Module):
             # )
         return edge_index, cell_offsets, neighbors, edge_dist, edge_vector
 
-    def generate_interaction_graph(self, cart_coords, lengths, angles,
-                                   num_atoms, edge_index, to_jimages,
-                                   num_bonds):
-
+    def generate_interaction_graph(
+        self, cart_coords, lengths, angles, num_atoms, edge_index, to_jimages, num_bonds
+    ):
         if self.otf_graph:
             edge_index, to_jimages, num_bonds = radius_graph_pbc(
-                cart_coords, lengths, angles, num_atoms, self.cutoff, self.max_neighbors,
-                device=num_atoms.device)
+                cart_coords,
+                lengths,
+                angles,
+                num_atoms,
+                self.cutoff,
+                self.max_neighbors,
+                device=num_atoms.device,
+            )
 
         # Switch the indices, so the second one becomes the target index,
         # over which we can efficiently aggregate.
@@ -447,7 +452,6 @@ class GemNetT(torch.nn.Module):
         # else:
         #     select_cutoff = self.cutoff
 
-
         ## Tian: Ignore these select edges for now
 
         # (edge_index, cell_offsets, neighbors, D_st, V_st,) = self.select_edges(
@@ -465,9 +469,7 @@ class GemNetT(torch.nn.Module):
             neighbors,
             D_st,
             V_st,
-        ) = self.reorder_symmetric_edges(
-            edge_index, to_jimages, num_bonds, D_st, V_st
-        )
+        ) = self.reorder_symmetric_edges(edge_index, to_jimages, num_bonds, D_st, V_st)
 
         # Indices for swapping c->a and a->c (for symmetric MP)
         block_sizes = neighbors // 2
@@ -481,7 +483,8 @@ class GemNetT(torch.nn.Module):
         )
 
         id3_ba, id3_ca, id3_ragged_idx = self.get_triplets(
-            edge_index, num_atoms=num_atoms.sum(),
+            edge_index,
+            num_atoms=num_atoms.sum(),
         )
 
         return (
@@ -495,8 +498,18 @@ class GemNetT(torch.nn.Module):
             id3_ragged_idx,
         )
 
-    def forward(self, z, frac_coords, atom_types, num_atoms, lengths, angles,
-                edge_index, to_jimages, num_bonds):
+    def forward(
+        self,
+        z,
+        frac_coords,
+        atom_types,
+        num_atoms,
+        lengths,
+        angles,
+        edge_index,
+        to_jimages,
+        num_bonds,
+    ):
         """
         args:
             z: (N_cryst, num_latent)
@@ -510,9 +523,9 @@ class GemNetT(torch.nn.Module):
             atom_types: (N_atoms, MAX_ATOMIC_NUM)
         """
         pos = frac_to_cart_coords(frac_coords, lengths, angles, num_atoms)
-        batch = torch.arange(num_atoms.size(0),
-                             device=num_atoms.device).repeat_interleave(
-                                 num_atoms, dim=0)
+        batch = torch.arange(
+            num_atoms.size(0), device=num_atoms.device
+        ).repeat_interleave(num_atoms, dim=0)
         atomic_numbers = atom_types
 
         (
@@ -525,8 +538,8 @@ class GemNetT(torch.nn.Module):
             id3_ca,
             id3_ragged_idx,
         ) = self.generate_interaction_graph(
-            pos, lengths, angles, num_atoms, edge_index, to_jimages,
-            num_bonds)
+            pos, lengths, angles, num_atoms, edge_index, to_jimages, num_bonds
+        )
         idx_s, idx_t = edge_index
 
         # Calculate triplet angles

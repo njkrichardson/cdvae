@@ -19,8 +19,7 @@ def get_env(env_name: str, default: Optional[str] = None) -> str:
     """
     if env_name not in os.environ:
         if default is None:
-            raise KeyError(
-                f"{env_name} not defined and no default value is present!")
+            raise KeyError(f"{env_name} not defined and no default value is present!")
         return default
 
     env_value: str = os.environ[env_name]
@@ -68,8 +67,7 @@ def log_hyperparameters(
     hparams = OmegaConf.to_container(cfg, resolve=True)
 
     # save number of model parameters
-    hparams[f"{STATS_KEY}/params_total"] = sum(p.numel()
-                                               for p in model.parameters())
+    hparams[f"{STATS_KEY}/params_total"] = sum(p.numel() for p in model.parameters())
     hparams[f"{STATS_KEY}/params_trainable"] = sum(
         p.numel() for p in model.parameters() if p.requires_grad
     )
@@ -86,7 +84,7 @@ def log_hyperparameters(
 
 
 # Load environment variables
-load_envs(os.getcwd()+'/.env')
+load_envs(os.getcwd() + "/.env")
 
 # Set the cwd to the project root
 PROJECT_ROOT: Path = Path(get_env("PROJECT_ROOT"))

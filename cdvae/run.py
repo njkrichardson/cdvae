@@ -13,7 +13,7 @@ from pytorch_lightning.callbacks import (
     EarlyStopping,
     LearningRateMonitor,
     ModelCheckpoint,
-    TQDMProgressBar
+    TQDMProgressBar,
 )
 from pytorch_lightning.loggers import WandbLogger
 
@@ -47,18 +47,20 @@ def build_callbacks(cfg: DictConfig) -> List[Callback]:
     if "model_checkpoints" in cfg.train:
         hydra.utils.log.info("Adding callback <ModelCheckpoint>")
         checkpoint_callback = ModelCheckpoint(
-                                            dirpath=Path(HydraConfig.get().run.dir),
-                                            monitor=cfg.train.monitor_metric,
-                                            mode=cfg.train.monitor_metric_mode,
-                                            save_top_k=cfg.train.model_checkpoints.save_top_k,
-                                            verbose=cfg.train.model_checkpoints.verbose,
-                                            save_last=True
-                                            )
+            dirpath=Path(HydraConfig.get().run.dir),
+            monitor=cfg.train.monitor_metric,
+            mode=cfg.train.monitor_metric_mode,
+            save_top_k=cfg.train.model_checkpoints.save_top_k,
+            verbose=cfg.train.model_checkpoints.verbose,
+            save_last=True,
+        )
         checkpoint_callback.CHECKPOINT_NAME_LAST = "{epoch}-{step}-last"
         callbacks.append(checkpoint_callback)
-    
-    callbacks.append(TQDMProgressBar(refresh_rate=cfg.logging.progress_bar_refresh_rate))
-    
+
+    callbacks.append(
+        TQDMProgressBar(refresh_rate=cfg.logging.progress_bar_refresh_rate)
+    )
+
     return callbacks
 
 
@@ -105,11 +107,13 @@ def run(cfg: DictConfig) -> None:
     )
 
     # Pass scaler from datamodule to model
-    hydra.utils.log.info(f"Passing scaler from datamodule to model <{datamodule.scaler}>")
+    hydra.utils.log.info(
+        f"Passing scaler from datamodule to model <{datamodule.scaler}>"
+    )
     model.lattice_scaler = datamodule.lattice_scaler.copy()
     model.scaler = datamodule.scaler.copy()
-    torch.save(datamodule.lattice_scaler, hydra_dir / 'lattice_scaler.pt')
-    torch.save(datamodule.scaler, hydra_dir / 'prop_scaler.pt')
+    torch.save(datamodule.lattice_scaler, hydra_dir / "lattice_scaler.pt")
+    torch.save(datamodule.scaler, hydra_dir / "prop_scaler.pt")
     # Instantiate the callbacks
     callbacks: List[Callback] = build_callbacks(cfg=cfg)
 
@@ -138,14 +142,16 @@ def run(cfg: DictConfig) -> None:
         ckpt = cfg.train.load_checkpoint_path
         hydra.utils.log.info(f"found user-defined checkpoint: {ckpt}")
     else:
-        ckpts = list(Path(os.getenv('HYDRA_JOBS')).rglob('*last.ckpt'))
+        ckpts = list(Path(os.getenv("HYDRA_JOBS")).rglob("*last.ckpt"))
         if len(ckpts) > 0:
-            ckpt_epochs = np.array([int(ckpt.parts[-1].split('-')[0].split('=')[1]) for ckpt in ckpts])
+            ckpt_epochs = np.array(
+                [int(ckpt.parts[-1].split("-")[0].split("=")[1]) for ckpt in ckpts]
+            )
             ckpt = str(ckpts[ckpt_epochs.argsort()[-1]])
             hydra.utils.log.info(f"found last checkpoint: {ckpt}")
         else:
             ckpt = None
-          
+
     hydra.utils.log.info("Instantiating the Trainer")
     trainer = pl.Trainer(
         default_root_dir=hydra_dir,
@@ -154,8 +160,8 @@ def run(cfg: DictConfig) -> None:
         deterministic=cfg.train.deterministic,
         check_val_every_n_epoch=cfg.logging.val_check_interval,
         # No longer supported
-        #progress_bar_refresh_rate=cfg.logging.progress_bar_refresh_rate,
-        #resume_from_checkpoint=ckpt,
+        # progress_bar_refresh_rate=cfg.logging.progress_bar_refresh_rate,
+        # resume_from_checkpoint=ckpt,
         **cfg.train.pl_trainer,
     )
     log_hyperparameters(trainer=trainer, model=model, cfg=cfg)

@@ -31,7 +31,6 @@ class AutomaticFit:
 
         # first instance created
         if AutomaticFit.fitting_mode and not self._fitted:
-
             # if first layer set to active
             if AutomaticFit.activeVar is None:
                 AutomaticFit.activeVar = self
@@ -125,12 +124,10 @@ class AutoScaleFit(AutomaticFit):
         if AutomaticFit.activeVar == self:
             nSamples = y.shape[0]
             self.variance_in += (
-                torch.mean(torch.var(x, dim=0)).to(dtype=torch.float32)
-                * nSamples
+                torch.mean(torch.var(x, dim=0)).to(dtype=torch.float32) * nSamples
             )
             self.variance_out += (
-                torch.mean(torch.var(y, dim=0)).to(dtype=torch.float32)
-                * nSamples
+                torch.mean(torch.var(y, dim=0)).to(dtype=torch.float32) * nSamples
             )
             self.nSamples += nSamples
 
@@ -160,9 +157,7 @@ class AutoScaleFit(AutomaticFit):
 
             # set variable to calculated value
             self.variable.copy_(self.variable * value)
-            update_json(
-                self.scale_file, {self._name: float(self.variable.item())}
-            )
+            update_json(self.scale_file, {self._name: float(self.variable.item())})
             self.set_next_active()  # set next variable in queue to active
 
 

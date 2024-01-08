@@ -9,15 +9,25 @@ from torch_geometric.data import Data
 
 from cdvae.common.utils import PROJECT_ROOT
 from cdvae.common.data_utils import (
-    preprocess, preprocess_tensors, add_scaled_lattice_prop)
+    preprocess,
+    preprocess_tensors,
+    add_scaled_lattice_prop,
+)
 
 
 class CrystDataset(Dataset):
-    def __init__(self, name: ValueNode, path: ValueNode,
-                 prop: ValueNode, niggli: ValueNode, primitive: ValueNode,
-                 graph_method: ValueNode, preprocess_workers: ValueNode,
-                 lattice_scale_method: ValueNode,
-                 **kwargs):
+    def __init__(
+        self,
+        name: ValueNode,
+        path: ValueNode,
+        prop: ValueNode,
+        niggli: ValueNode,
+        primitive: ValueNode,
+        graph_method: ValueNode,
+        preprocess_workers: ValueNode,
+        lattice_scale_method: ValueNode,
+        **kwargs,
+    ):
         super().__init__()
         self.path = path
         self.name = name
@@ -34,7 +44,8 @@ class CrystDataset(Dataset):
             niggli=self.niggli,
             primitive=self.primitive,
             graph_method=self.graph_method,
-            prop_list=[prop])
+            prop_list=[prop],
+        )
 
         add_scaled_lattice_prop(self.cached_data, lattice_scale_method)
         self.lattice_scaler = None
@@ -48,8 +59,15 @@ class CrystDataset(Dataset):
 
         # scaler is set in DataModule set stage
         prop = self.scaler.transform(data_dict[self.prop])
-        (frac_coords, atom_types, lengths, angles, edge_indices,
-         to_jimages, num_atoms) = data_dict['graph_arrays']
+        (
+            frac_coords,
+            atom_types,
+            lengths,
+            angles,
+            edge_indices,
+            to_jimages,
+            num_atoms,
+        ) = data_dict["graph_arrays"]
 
         # atom_coords are fractional coordinates
         # edge_index is incremented during batching
@@ -60,7 +78,8 @@ class CrystDataset(Dataset):
             lengths=torch.Tensor(lengths).view(1, -1),
             angles=torch.Tensor(angles).view(1, -1),
             edge_index=torch.LongTensor(
-                edge_indices.T).contiguous(),  # shape (2, num_edges)
+                edge_indices.T
+            ).contiguous(),  # shape (2, num_edges)
             to_jimages=torch.LongTensor(to_jimages),
             num_atoms=num_atoms,
             num_bonds=edge_indices.shape[0],
@@ -74,9 +93,16 @@ class CrystDataset(Dataset):
 
 
 class TensorCrystDataset(Dataset):
-    def __init__(self, crystal_array_list, niggli, primitive,
-                 graph_method, preprocess_workers,
-                 lattice_scale_method, **kwargs):
+    def __init__(
+        self,
+        crystal_array_list,
+        niggli,
+        primitive,
+        graph_method,
+        preprocess_workers,
+        lattice_scale_method,
+        **kwargs,
+    ):
         super().__init__()
         self.niggli = niggli
         self.primitive = primitive
@@ -87,7 +113,8 @@ class TensorCrystDataset(Dataset):
             crystal_array_list,
             niggli=self.niggli,
             primitive=self.primitive,
-            graph_method=self.graph_method)
+            graph_method=self.graph_method,
+        )
 
         add_scaled_lattice_prop(self.cached_data, lattice_scale_method)
         self.lattice_scaler = None
@@ -99,8 +126,15 @@ class TensorCrystDataset(Dataset):
     def __getitem__(self, index):
         data_dict = self.cached_data[index]
 
-        (frac_coords, atom_types, lengths, angles, edge_indices,
-         to_jimages, num_atoms) = data_dict['graph_arrays']
+        (
+            frac_coords,
+            atom_types,
+            lengths,
+            angles,
+            edge_indices,
+            to_jimages,
+            num_atoms,
+        ) = data_dict["graph_arrays"]
 
         # atom_coords are fractional coordinates
         # edge_index is incremented during batching
@@ -111,7 +145,8 @@ class TensorCrystDataset(Dataset):
             lengths=torch.Tensor(lengths).view(1, -1),
             angles=torch.Tensor(angles).view(1, -1),
             edge_index=torch.LongTensor(
-                edge_indices.T).contiguous(),  # shape (2, num_edges)
+                edge_indices.T
+            ).contiguous(),  # shape (2, num_edges)
             to_jimages=torch.LongTensor(to_jimages),
             num_atoms=num_atoms,
             num_bonds=edge_indices.shape[0],
@@ -127,15 +162,14 @@ class TensorCrystDataset(Dataset):
 def main(cfg: omegaconf.DictConfig):
     from torch_geometric.data import Batch
     from cdvae.common.data_utils import get_scaler_from_data_list
+
     dataset: CrystDataset = hydra.utils.instantiate(
         cfg.data.datamodule.datasets.train, _recursive_=False
     )
     lattice_scaler = get_scaler_from_data_list(
-        dataset.cached_data,
-        key='scaled_lattice')
-    scaler = get_scaler_from_data_list(
-        dataset.cached_data,
-        key=dataset.prop)
+        dataset.cached_data, key="scaled_lattice"
+    )
+    scaler = get_scaler_from_data_list(dataset.cached_data, key=dataset.prop)
 
     dataset.lattice_scaler = lattice_scaler
     dataset.scaler = scaler
