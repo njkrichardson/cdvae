@@ -23,9 +23,24 @@ $ make
 $ make run
 ...
 $ docker exec -it cdvae /bin/zsh
-(container) $ cd /cdvae
-(container) $ direnv allow
-(container) $ python3 cdvae/run.py data=perov expname=perov
+```
+
+We use miniconda within the container environment (we realize this is insane, but we have not found another way to instantiate a workable dependency collection otherwise). The first time using the container, you'll 
+need to run the following: 
+
+```bash 
+(container) $ conda init zsh
+...
+(container) $ zsh
+...
+(container) (base) $ 
+```
+
+Now simply activate the (intra-container) miniconda environment. 
+
+```bash
+(container) (base) $ conda activate cdvae
+(container) (cdvae) $ python3 cdvae/run.py data=perov expname=perov
 ```
 
 ### Miniconda3
