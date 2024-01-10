@@ -52,7 +52,7 @@ $ conda create --name cdvae python=3.9 \
     && conda install -y pytorch==1.13.0 torchvision==0.14.0 torchaudio==0.13.0 pytorch-cuda=11.6 -c pytorch -c nvidia \
     && conda install -c conda-forge pytorch-lightning \
     && conda install -c conda-forge ase autopep8 seaborn tqdm nglview \
-    && pip install torch_geometric pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-1.13.0+cu116.html \
+    && pip install --no-index torch_geometric pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-1.13.0+cu116.html \
     && pip install higher hydra-core==1.1.0 hydra-joblib-launcher==1.1.5 p-tqdm==1.3.3 pytest python-dotenv smact==2.2.1 streamlit==0.79.0 torchdiffeq wandb \
     && pip install matminer==0.7.3 \
     && pip install "protobuf==3.20.*"
